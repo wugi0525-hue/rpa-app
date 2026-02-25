@@ -68,7 +68,7 @@ export const translations = {
         nav_audits: "평가 기록",
         nav_guide: "현장 가이드",
         nav_record: "새 평가",
-        nav_magazine: "인사이트",
+        nav_magazine: "매거진",
         nav_profile: "내 정보",
         settings: "설정",
         language: "언어",

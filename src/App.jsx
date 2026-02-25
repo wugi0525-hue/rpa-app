@@ -21,6 +21,7 @@ function App() {
   const location = useLocation();
   const [currentUser, setCurrentUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [hasStarted, setHasStarted] = useState(false);
   const { language } = useLanguage();
   const t = translations[language] || translations.en;
 
@@ -37,7 +38,10 @@ function App() {
   };
 
   if (authLoading) return <LoadingSpinner message={t.dash_loading || 'Loading...'} />;
-  if (!currentUser) return <Login onLogin={setCurrentUser} />;
+  if (!hasStarted) return <Login onLogin={(user) => {
+    setCurrentUser(user);
+    setHasStarted(true);
+  }} />;
 
   return (
     <div className="stealth-layout" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>

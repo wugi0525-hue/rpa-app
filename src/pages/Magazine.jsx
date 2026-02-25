@@ -8,64 +8,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const defaultArticles = {
-    ko: [
-        {
-            id: 1,
-            title: "원가 절감을 넘어선 가치 창출: 구매 실무자의 스마트 팩토리 활용법",
-            date: "2024. 11. 15",
-            author: "구매/조달 실무 전문가",
-            category: "Procurement Strategy",
-            excerpt: "단순한 단가 후려치기가 아닌, 협력사의 생산성 향상을 리딩하여 상생하는 구매 전략. RPA 평가를 어떻게 공급망 관리에 녹여낼 것인가?",
-            content: "구매 실무자로서 가장 답답한 순간은 협력사의 '단가 인상' 공문에 수동적으로 끌려갈 때입니다. 진정한 원가 절감(Cost Reduction)은 단순히 마진을 깎는 것이 아니라, 협력사의 비효율을 찾아내어 원가를 낮춰주는 데에서 시작합니다. 현장 실사에 RPA(Rapid Plant Assessment) 방법론을 도입하면, 협력사의 재고 관리 흐름, 설비 가동률, 작업자의 동선 낭비 등을 단시간에 파악할 수 있습니다..."
-        },
-        {
-            id: 2,
-            title: "린(Lean) 생산 체계가 조달 리드타임(Lead Time)에 미치는 치명적 영향",
-            date: "2024. 10. 28",
-            author: "공급망 분석 파트",
-            category: "Lean Manufacturing",
-            excerpt: "리드타임이 길어지는 원인은 납품업체의 '배치(Batch)' 생산 방식 때문일 확률이 높습니다. 린 생산의 '1개 흘리기(One-piece flow)' 원칙이 구매 타이밍을 어떻게 바꾸는지 알아봅니다.",
-            content: "주문 후 납기일이 4주가 넘어가는 협력사를 방문해보면 십중팔구 '대량 로트(Lot) 생산'을 하고 있습니다. 한 번 기계를 세팅할 때 왕창 찍어내는 것이 원가를 낮춘다는 착각 때문이죠. 하지만 이는 끝없는 재고를 양산하고 역설적으로 고객이 원하는 소량의 부품은 항상 결품이 나게 만듭니다..."
-        },
-        {
-            id: 3,
-            title: "최우수 협력사를 가려내는 11가지 현장 스캐닝 노하우",
-            date: "2024. 09. 05",
-            author: "협력기업 오딧(Audit) 전문가",
-            category: "Supplier Audit",
-            excerpt: "공장 바닥만 봐도 수준이 보인다? 구매 담당자가 현장 실사(Audit) 시 반드시 체크해야 할 11가지 핵심 지표와 실무 꿀팁.",
-            content: "좋은 협력사는 현장에 들어서는 순간 공기부터 다릅니다. 작업장 바닥에 떨어져 있는 나사못 하나, 구석에 방치된 청소도구함 등은 공장의 관리 수준을 적나라하게 보여주는 지표입니다. 구매 담당자가 현장 실사 빈도를 높이고 RPA 11개 카테고리를 기준으로 평가 데이터베이스를 구축하면..."
-        }
-    ],
-    en: [
-        {
-            id: 1,
-            title: "Beyond Cost Reduction: A Procurement Professional's Guide to Smart Factories",
-            date: "Nov 15, 2024",
-            author: "Procurement Expert",
-            category: "Procurement Strategy",
-            excerpt: "Moving beyond simple price negotiation towards collaborative productivity enhancement using RPA assessments in supply chain management.",
-            content: "As a procurement professional, the most frustrating moments occur when reacting to a supplier's price increase notice. True cost reduction doesn't mean squeezing margins, but identifying and eliminating inefficiencies on the supplier's floor. By implementing the Rapid Plant Assessment (RPA) methodology during site visits..."
-        },
-        {
-            id: 2,
-            title: "How Lean Manufacturing Critically Impacts Procurement Lead Times",
-            date: "Oct 28, 2024",
-            author: "Supply Chain Analytics",
-            category: "Lean Manufacturing",
-            excerpt: "Long lead times are often caused by batch production. Read how the transition to one-piece flow transforms purchasing schedules.",
-            content: "When visiting a supplier with lead times over 4 weeks, you'll almost always find them utilizing large batch production. The misconception that 'running huge lots saves money' leads to massive inventory while ironically causing stock-outs for the specific parts customers actually need..."
-        },
-        {
-            id: 3,
-            title: "11 On-Site Scanning Techniques to Identify Top-Tier Suppliers",
-            date: "Sep 05, 2024",
-            author: "Supplier Audit Specialist",
-            category: "Supplier Audit",
-            excerpt: "Can you judge a factory just by looking at its floor? Essential tips for procurement officers conducting on-site audits based on 11 RPA categories.",
-            content: "A top-tier supplier feels different the moment you walk onto the floor. A single dropped screw or a neglected cleaning station in the corner are naked indicators of management quality. When procurement officers increase audit frequencies and build a database based on the 11 RPA categories..."
-        }
-    ]
+    ko: [],
+    en: []
 };
 
 export default function Magazine() {
@@ -135,8 +79,7 @@ export default function Magazine() {
         }
     };
 
-    // Use fetched posts if available, otherwise fallback to language-specific defaults
-    const displayArticles = posts.length > 0 ? posts : (defaultArticles[language] || defaultArticles.en);
+    const displayArticles = posts.length > 0 ? posts : [];
 
     return (
         <div className="stealth-layout" style={{ maxWidth: '600px', margin: '0 auto', padding: '24px 20px', paddingBottom: '120px', display: 'flex', flexDirection: 'column' }}>
@@ -153,6 +96,13 @@ export default function Magazine() {
             {loading ? (
                 <div style={{ padding: '40px 0' }}>
                     <LoadingSpinner fullScreen={false} message="Loading insights..." />
+                </div>
+            ) : displayArticles.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
+                    <BookOpen size={48} color="rgba(255,255,255,0.1)" style={{ marginBottom: '16px' }} />
+                    <p style={{ fontSize: '16px' }}>
+                        {language === 'ko' ? "아직 등록된 매거진 아티클이 없습니다." : "No magazine articles have been published yet."}
+                    </p>
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -186,9 +136,6 @@ export default function Magazine() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '12px' }}>
                                         <User size={14} /> {article.author}
                                     </div>
-                                    <button style={{ color: 'var(--accent-primary)', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer' }}>
-                                        Read Further <ExternalLink size={14} />
-                                    </button>
                                 </div>
                             </div>
                         </article>
