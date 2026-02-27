@@ -1,0 +1,248 @@
+@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Professional & Sophisticated, Warm & Inviting Colors */
+  --bg-primary: #F9F8F6;
+  /* Soft Oatmeal / Warm White */
+  --bg-secondary: #FFFFFF;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(45, 55, 72, 0.08);
+  /* Deep Charcoal with low opacity */
+  --shadow-warm: 0 16px 48px -12px rgba(45, 55, 72, 0.08);
+  /* Soft wide drop shadow */
+
+  --text-primary: #2D3748;
+  /* Deep Charcoal */
+  --text-secondary: #4A5568;
+  --text-muted: #A0AEC0;
+
+  --accent-primary: #D97757;
+  /* Muted Terracotta */
+  --accent-hover: #C66242;
+  --accent-light: #F6A192;
+  /* Soft Peach */
+
+  --success: #48BB78;
+  --warning: #E6B058;
+  /* Warm Mustard */
+  --danger: #F56565;
+
+  --border-radius: 20px;
+  /* Soft Rounded Corners */
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+#root {
+  max-width: 800px;
+  margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+  background-color: var(--bg-primary);
+  /* Subdued warm gradient for depth */
+  background-image: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.05) 0%, transparent 60%);
+}
+
+/* Glassmorphism Utilities */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius);
+  padding: 24px;
+  box-shadow: var(--shadow-warm);
+}
+
+.title-large {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.text-medium {
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.text-small {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  transition: var(--transition);
+}
+
+.btn-primary {
+  background-color: var(--accent-primary);
+  color: white;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.stealth-layout {
+  padding: 24px;
+  padding-bottom: 100px;
+  /* Space for bottom nav */
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 800px;
+  background: rgba(255, 255, 255, 0.95);
+  /* Keep it light and warm */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  /* V-center fixing */
+  height: 80px;
+  /* Fixed height for consistent vertical alignment */
+  padding: 0 20px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: 50;
+  box-shadow: 0 -4px 24px rgba(45, 55, 72, 0.04);
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  /* Take full height of bottom-nav */
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+.nav-item.active {
+  color: var(--accent-primary);
+}
+
+/* Hide scrollbar for clean look */
+::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes slideUpFade {
+  0% {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up-fade {
+  animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Responsive Table Layout */
+.score-wrapper {
+  margin-bottom: 32px;
+}
+
+.score-header {
+  display: none;
+}
+
+.score-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 600px) {
+  .score-wrapper {
+    background: var(--bg-secondary);
+    padding: 24px;
+    border-radius: 16px;
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-warm);
+  }
+
+  .score-header {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .score-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .score-btn {
+    height: 50px !important;
+    font-size: 20px !important;
+    border-radius: 12px !important;
+  }
+}
+
+/* Modal Overlay Styles */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+}
+
+.login-modal-content {
+  background-color: var(--bg-secondary);
+  border-radius: 12px;
+  box-shadow: var(--shadow-warm);
+  width: 90%;
+  max-width: 400px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 1px solid var(--glass-border);
+  position: relative;
+}
