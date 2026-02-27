@@ -1,13 +1,41 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../LanguageContext';
 import { translations } from '../i18n/translations';
 import { User, LogOut, ShieldCheck, Database, Award, Mail } from 'lucide-react';
-import { auth, signOut, googleProvider } from '../firebase';
+import { auth, signOut, googleProvider, db } from '../firebase';
 import { linkWithPopup } from 'firebase/auth';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export default function Profile({ user }) {
     const { language } = useLanguage();
     const t = translations[language] || translations.en;
+
+    const [auditCount, setAuditCount] = useState(0);
+    const [levelInfo, setLevelInfo] = useState({ level: 1, title: 'Junior Auditor', color: 'var(--text-muted)' });
+
+    useEffect(() => {
+        const fetchAuditCount = async () => {
+            if (!user || user.isAnonymous) return;
+            try {
+                const q = query(
+                    collection(db, "audits"),
+                    where("userId", "==", user.uid)
+                );
+                const querySnapshot = await getDocs(q);
+                const count = querySnapshot.size;
+                setAuditCount(count);
+
+                if (count >= 50) setLevelInfo({ level: 4, title: 'Elite Auditor', color: 'var(--success)' });
+                else if (count >= 20) setLevelInfo({ level: 3, title: 'Master Auditor', color: 'var(--accent-primary)' });
+                else if (count >= 5) setLevelInfo({ level: 2, title: 'Pro Auditor', color: 'var(--warning)' });
+                else setLevelInfo({ level: 1, title: 'Junior Auditor', color: 'var(--text-muted)' });
+
+            } catch (error) {
+                console.error("Error fetching audit count:", error);
+            }
+        };
+        fetchAuditCount();
+    }, [user]);
 
     const handleLogout = async () => {
         await signOut(auth);
@@ -90,13 +118,13 @@ export default function Profile({ user }) {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div style={{ backgroundColor: 'var(--bg-primary)', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px solid var(--glass-border)' }}>
                         <Database size={20} color="var(--accent-primary)" />
-                        <span style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>-</span>
+                        <span style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>{user?.isAnonymous ? '-' : auditCount}</span>
                         <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Synched Audits</span>
                     </div>
                     <div style={{ backgroundColor: 'var(--bg-primary)', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px solid var(--glass-border)' }}>
-                        <Award size={20} color="var(--warning)" />
-                        <span style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>Level 1</span>
-                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Authority</span>
+                        <Award size={20} color={user?.isAnonymous ? 'var(--text-muted)' : levelInfo.color} />
+                        <span style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>Level {user?.isAnonymous ? '1' : levelInfo.level}</span>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{user?.isAnonymous ? 'Guest' : levelInfo.title}</span>
                     </div>
                 </div>
 

@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, Eye, ChevronDown, ChevronUp, Loader, Edit2, RotateCcw, Save } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, Eye, ChevronDown, ChevronUp, Loader, Edit2, RotateCcw, Save, Share2, Download } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import { rpaCategories } from '../data/categories';
 import { rpaQuestionnaire } from '../data/questionnaire';
 import { db } from '../firebase';
@@ -57,8 +59,15 @@ export default function AuditForm({ user }) {
     const [scores, setScores] = useState(savedState.scores || {});
     const [qAnswers, setQAnswers] = useState(savedState.qAnswers || {});
     const [ultimateAnswer, setUltimateAnswer] = useState(savedState.ultimateAnswer || null);
-    const [companyInfo, setCompanyInfo] = useState(savedState.companyInfo || { name: '', products: '', homepage: '', evaluator: '' });
+    const [companyInfo, setCompanyInfo] = useState({
+        name: savedState.companyInfo?.name || '',
+        products: savedState.companyInfo?.products || '',
+        homepage: savedState.companyInfo?.homepage || '',
+        evaluator: savedState.companyInfo?.evaluator || ''
+    });
     const [isSaving, setIsSaving] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+    const pdfRef = useRef(null);
     const [editingItem, setEditingItem] = useState(null);
 
     const [selectedTermId, setSelectedTermId] = useState(null); // Glossary State
@@ -204,8 +213,63 @@ export default function AuditForm({ user }) {
     if (auditPhase === 'result') {
         const diagnosis = getDiagnosis(totalScore, yesCount, language);
 
+        const handleExportPdf = async () => {
+            if (!pdfRef.current) return;
+            setIsExporting(true);
+            try {
+                // Try to hide action buttons during PDF capture
+                const actionButtons = document.getElementById('report-action-buttons');
+                if (actionButtons) actionButtons.style.display = 'none';
+
+                const canvas = await html2canvas(pdfRef.current, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff'
+                });
+
+                if (actionButtons) actionButtons.style.display = 'flex';
+
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                const pdfBlob = pdf.output('blob');
+                const fileName = `RPA_Report_${companyInfo.name || 'Facility'}.pdf`;
+                const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: 'RPA Audit Report',
+                            text: `RPA Audit Report for ${companyInfo.name || 'Facility'}`
+                        });
+                        console.log('Shared successfully');
+                    } catch (error) {
+                        if (error.name !== 'AbortError') {
+                            console.error('Error sharing:', error);
+                            pdf.save(fileName);
+                        }
+                    }
+                } else {
+                    pdf.save(fileName);
+                    alert(language === 'ko' ? "PDF 다운로드가 완료되었습니다. 메일 앱에서 첨부해 주세요." : "PDF downloaded. Please attach it to your email.");
+                }
+            } catch (err) {
+                console.error("PDF generation failed", err);
+                alert("Failed to generate PDF.");
+                // Restore button visibility just in case
+                const actionButtons = document.getElementById('report-action-buttons');
+                if (actionButtons) actionButtons.style.display = 'flex';
+            } finally {
+                setIsExporting(false);
+            }
+        };
+
         return (
-            <div className="stealth-layout" style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '120px' }}>
+            <div className="stealth-layout" ref={pdfRef} style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '120px', backgroundColor: '#fafafa', minHeight: '100vh', padding: '20px' }}>
                 <div style={{ textAlign: 'center', marginBottom: '8px', position: 'relative' }}>
                     <button onClick={handleRestart} style={{ position: 'absolute', right: '0px', top: '0px', padding: '8px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'var(--text-muted)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
                         <RotateCcw size={16} /> <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{t.btn_restart}</span>
@@ -394,44 +458,82 @@ export default function AuditForm({ user }) {
                         {isSaving ? 'Saving...' : t.btn_save}
                     </button>
 
-                    <button
-                        onClick={() => {
-                            const recipient = window.prompt(t.prompt_email, "");
-                            if (recipient === null) return;
+                    <div id="report-action-buttons" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <button
+                            onClick={handleExportPdf}
+                            disabled={isExporting}
+                            style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: 'var(--success)', color: 'white', border: 'none', boxShadow: 'var(--shadow-warm)', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', opacity: isExporting ? 0.7 : 1 }}
+                        >
+                            {isExporting ? <Loader className="animate-spin" size={20} /> : <Share2 size={20} />}
+                            {isExporting ? (language === 'ko' ? '기다려 주세요...' : 'Generating...') : (language === 'ko' ? 'PDF 출력 및 앱으로 공유 🚀' : 'Export PDF & Share')}
+                        </button>
+                        <button
+                            onClick={() => {
+                                const subject = `${t.email_subject} ${companyInfo.name || 'Unknown'}`;
+                                let fullText = `${t.email_body_results} ${companyInfo.name || 'Unknown'}\n\n`;
+                                fullText += `${t.email_body_summary}\n`;
+                                fullText += `${t.email_body_total} ${totalScore}/${maxScore}\n`;
+                                fullText += `${t.email_body_lean} ${yesCount} / 20\n\n`;
+                                fullText += `${t.email_body_diag}\n`;
+                                fullText += `- ${diagnosis.title}\n`;
+                                fullText += `- ${diagnosis.desc}\n\n`;
 
-                            const subject = encodeURIComponent(`${t.email_subject} ${companyInfo.name || 'Unknown'}`);
-                            let bodyText = `${t.email_body_results} ${companyInfo.name || 'Unknown'}\n\n`;
-                            bodyText += `${t.email_body_summary}\n`;
-                            bodyText += `${t.email_body_total} ${totalScore}/${maxScore}\n`;
-                            bodyText += `${t.email_body_lean} ${yesCount} / 20\n\n`;
-                            bodyText += `${t.email_body_diag}\n`;
-                            bodyText += `- ${diagnosis.title}\n`;
-                            bodyText += `- ${diagnosis.desc}\n\n`;
-                            bodyText += `${t.email_body_cat}\n`;
-                            categoriesList.forEach((c, i) => {
-                                bodyText += `${i + 1}. ${c.title} : ${scores[i] !== undefined ? scores[i] : t.email_body_skipped} / 11\n`;
-                                bodyText += `  ${t.email_body_target} ${c.focus}\n`;
-                            });
-                            bodyText += `\n${t.email_body_q}\n`;
-                            questionnaireList.forEach((q, i) => {
-                                bodyText += `Q${i + 1}. ${q.text}\n`;
-                                const ansLocal = qAnswers[i] === 'YES' ? t.ans_yes.split(' ')[0] : (qAnswers[i] === 'NO' ? t.ans_no.split(' ')[0] : t.email_body_skipped);
-                                bodyText += `  ${t.email_body_ans} ${ansLocal}\n`;
-                            });
-                            bodyText += `\n${t.email_body_ult}\n`;
-                            if (ultimateAnswer) {
-                                const ultLocal = ultimateAnswer === 'YES' ? t.result_yes : t.result_no;
-                                bodyText += `${t.email_body_buy} ${ultLocal}\n\n`;
-                            }
-                            bodyText += `Products: ${companyInfo.products}\n`;
-                            bodyText += `Evaluator: ${companyInfo.evaluator || 'N/A'}\n`;
+                                fullText += `${t.email_body_cat}\n`;
+                                categoriesList.forEach((c, i) => {
+                                    fullText += `${i + 1}. ${c.title} : ${scores[i] !== undefined ? scores[i] : t.email_body_skipped} / 11\n`;
+                                    fullText += `  ${t.email_body_target} ${c.focus}\n`;
+                                });
+                                fullText += `\n${t.email_body_q}\n`;
+                                questionnaireList.forEach((q, i) => {
+                                    fullText += `Q${i + 1}. ${q.text}\n`;
+                                    const ansLocal = qAnswers[i] === 'YES' ? t.ans_yes.split(' ')[0] : (qAnswers[i] === 'NO' ? t.ans_no.split(' ')[0] : t.email_body_skipped);
+                                    fullText += `  ${t.email_body_ans} ${ansLocal}\n`;
+                                });
+                                fullText += `\n${t.email_body_ult}\n`;
+                                if (ultimateAnswer) {
+                                    const ultLocal = ultimateAnswer === 'YES' ? t.result_yes : t.result_no;
+                                    fullText += `${t.email_body_buy} ${ultLocal}\n\n`;
+                                }
+                                fullText += `Products: ${companyInfo.products}\n`;
+                                fullText += `Evaluator: ${companyInfo.evaluator || 'N/A'}\n`;
 
-                            window.location.href = `mailto:${recipient}?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
-                        }}
-                        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)', boxShadow: 'var(--shadow-warm)', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px' }}
-                    >
-                        ✉️ {t.btn_share}
-                    </button>
+                                navigator.clipboard.writeText(`[Subject: ${subject}]\n\n${fullText}`).then(() => {
+                                    alert(language === 'ko' ? "전체 리포트가 클립보드에 복사되었습니다. 메일 앱이나 카카오톡 등에 붙여넣기(Ctrl+V) 하세요!" : "Full report copied to clipboard. Paste it in your email or messenger!");
+                                }).catch(err => {
+                                    console.error("Copy failed", err);
+                                    alert("Clipboard copy failed.");
+                                });
+                            }}
+                            style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--accent-primary)', boxShadow: 'var(--shadow-warm)', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px' }}
+                        >
+                            📋 {language === 'ko' ? '전체 리포트 복사하기 (추천)' : 'Copy Full Report TO Clipboard'}
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                const recipient = window.prompt(t.prompt_email, "");
+                                if (recipient === null) return;
+
+                                const subject = encodeURIComponent(`${t.email_subject} ${companyInfo.name || 'Unknown'}`);
+                                let summaryText = `${t.email_body_results} ${companyInfo.name || 'Unknown'}\n\n`;
+                                summaryText += `${t.email_body_summary}\n`;
+                                summaryText += `${t.email_body_total} ${totalScore}/${maxScore}\n`;
+                                summaryText += `${t.email_body_lean} ${yesCount} / 20\n\n`;
+                                summaryText += `${t.email_body_diag}\n`;
+                                summaryText += `- ${diagnosis.title}\n`;
+                                summaryText += `- ${diagnosis.desc}\n\n`;
+                                summaryText += `* Please use the "Copy Full Report" button in the app for detailed question breakdowns (due to email length limits). *\n`;
+                                summaryText += `* 보다 상세한 문항별 점수는 앱에서 [전체 리포트 복사하기]를 통해 확인 가능합니다. *\n\n`;
+                                summaryText += `Products: ${companyInfo.products}\n`;
+                                summaryText += `Evaluator: ${companyInfo.evaluator || 'N/A'}\n`;
+
+                                window.location.href = `mailto:${recipient}?subject=${subject}&body=${encodeURIComponent(summaryText)}`;
+                            }}
+                            style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--glass-border)', padding: '16px', borderRadius: '12px', fontWeight: 'normal', fontSize: '14px' }}
+                        >
+                            ✉️ {language === 'ko' ? '이메일 띄우기 (요약본만)' : 'Share Summary via Email'}
+                        </button>
+                    </div>
 
                     {user?.isAnonymous && (
                         <div style={{ marginTop: '24px', padding: '20px', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid var(--accent-primary)', borderRadius: '12px', textAlign: 'center' }}>
@@ -460,7 +562,7 @@ export default function AuditForm({ user }) {
     }
 
     if (auditPhase === 'demographics') {
-        const isInfoReady = companyInfo.name.trim().length > 0 && companyInfo.products.trim().length > 0;
+        const isInfoReady = (companyInfo?.name || '').trim().length > 0 && (companyInfo?.products || '').trim().length > 0;
 
         return (
             <div className="stealth-layout" style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '120px' }}>
@@ -475,7 +577,7 @@ export default function AuditForm({ user }) {
                         <input
                             type="text"
                             placeholder="e.g. A-Tech Factory 1"
-                            value={companyInfo.name}
+                            value={companyInfo?.name || ''}
                             onChange={(e) => setCompanyInfo({ ...companyInfo, name: e.target.value })}
                             style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--glass-border)', padding: '16px', borderRadius: '12px', color: 'var(--text-primary)', fontSize: '16px', outline: 'none' }}
                         />
@@ -485,7 +587,7 @@ export default function AuditForm({ user }) {
                         <input
                             type="text"
                             placeholder="e.g. Plastic injection automotive parts"
-                            value={companyInfo.products}
+                            value={companyInfo?.products || ''}
                             onChange={(e) => setCompanyInfo({ ...companyInfo, products: e.target.value })}
                             style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--glass-border)', padding: '16px', borderRadius: '12px', color: 'var(--text-primary)', fontSize: '16px', outline: 'none' }}
                         />
@@ -495,7 +597,7 @@ export default function AuditForm({ user }) {
                         <input
                             type="url"
                             placeholder="e.g. https://www.example.com"
-                            value={companyInfo.homepage}
+                            value={companyInfo?.homepage || ''}
                             onChange={(e) => setCompanyInfo({ ...companyInfo, homepage: e.target.value })}
                             style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--glass-border)', padding: '16px', borderRadius: '12px', color: 'var(--text-primary)', fontSize: '16px', outline: 'none' }}
                         />
@@ -505,7 +607,7 @@ export default function AuditForm({ user }) {
                         <input
                             type="text"
                             placeholder="My name or notes"
-                            value={companyInfo.evaluator}
+                            value={companyInfo?.evaluator || ''}
                             onChange={(e) => setCompanyInfo({ ...companyInfo, evaluator: e.target.value })}
                             style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--glass-border)', padding: '16px', borderRadius: '12px', color: 'var(--text-primary)', fontSize: '16px', outline: 'none' }}
                         />

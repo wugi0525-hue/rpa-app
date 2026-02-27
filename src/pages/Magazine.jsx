@@ -1,72 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../LanguageContext';
 import { translations } from '../i18n/translations';
-import { BookOpen, ExternalLink, Clock, User, Plus, X, Save } from 'lucide-react';
+import { BookOpen, Clock, User, Plus, X, Save, ArrowLeft, PenTool, LayoutTemplate } from 'lucide-react';
 import { auth, db, ADMIN_EMAIL } from '../firebase';
 import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import LoadingSpinner from '../components/LoadingSpinner';
-
-const defaultArticles = {
-    ko: [
-        {
-            id: 1,
-            title: "원가 절감을 넘어선 가치 창출: 구매 실무자의 스마트 팩토리 활용법",
-            date: "2024. 11. 15",
-            author: "구매/조달 실무 전문가",
-            category: "Procurement Strategy",
-            excerpt: "단순한 단가 후려치기가 아닌, 협력사의 생산성 향상을 리딩하여 상생하는 구매 전략. RPA 평가를 어떻게 공급망 관리에 녹여낼 것인가?",
-            content: "구매 실무자로서 가장 답답한 순간은 협력사의 '단가 인상' 공문에 수동적으로 끌려갈 때입니다. 진정한 원가 절감(Cost Reduction)은 단순히 마진을 깎는 것이 아니라, 협력사의 비효율을 찾아내어 원가를 낮춰주는 데에서 시작합니다. 현장 실사에 RPA(Rapid Plant Assessment) 방법론을 도입하면, 협력사의 재고 관리 흐름, 설비 가동률, 작업자의 동선 낭비 등을 단시간에 파악할 수 있습니다..."
-        },
-        {
-            id: 2,
-            title: "린(Lean) 생산 체계가 조달 리드타임(Lead Time)에 미치는 치명적 영향",
-            date: "2024. 10. 28",
-            author: "공급망 분석 파트",
-            category: "Lean Manufacturing",
-            excerpt: "리드타임이 길어지는 원인은 납품업체의 '배치(Batch)' 생산 방식 때문일 확률이 높습니다. 린 생산의 '1개 흘리기(One-piece flow)' 원칙이 구매 타이밍을 어떻게 바꾸는지 알아봅니다.",
-            content: "주문 후 납기일이 4주가 넘어가는 협력사를 방문해보면 십중팔구 '대량 로트(Lot) 생산'을 하고 있습니다. 한 번 기계를 세팅할 때 왕창 찍어내는 것이 원가를 낮춘다는 착각 때문이죠. 하지만 이는 끝없는 재고를 양산하고 역설적으로 고객이 원하는 소량의 부품은 항상 결품이 나게 만듭니다..."
-        },
-        {
-            id: 3,
-            title: "최우수 협력사를 가려내는 11가지 현장 스캐닝 노하우",
-            date: "2024. 09. 05",
-            author: "협력기업 오딧(Audit) 전문가",
-            category: "Supplier Audit",
-            excerpt: "공장 바닥만 봐도 수준이 보인다? 구매 담당자가 현장 실사(Audit) 시 반드시 체크해야 할 11가지 핵심 지표와 실무 꿀팁.",
-            content: "좋은 협력사는 현장에 들어서는 순간 공기부터 다릅니다. 작업장 바닥에 떨어져 있는 나사못 하나, 구석에 방치된 청소도구함 등은 공장의 관리 수준을 적나라하게 보여주는 지표입니다. 구매 담당자가 현장 실사 빈도를 높이고 RPA 11개 카테고리를 기준으로 평가 데이터베이스를 구축하면..."
-        }
-    ],
-    en: [
-        {
-            id: 1,
-            title: "Beyond Cost Reduction: A Procurement Professional's Guide to Smart Factories",
-            date: "Nov 15, 2024",
-            author: "Procurement Expert",
-            category: "Procurement Strategy",
-            excerpt: "Moving beyond simple price negotiation towards collaborative productivity enhancement using RPA assessments in supply chain management.",
-            content: "As a procurement professional, the most frustrating moments occur when reacting to a supplier's price increase notice. True cost reduction doesn't mean squeezing margins, but identifying and eliminating inefficiencies on the supplier's floor. By implementing the Rapid Plant Assessment (RPA) methodology during site visits..."
-        },
-        {
-            id: 2,
-            title: "How Lean Manufacturing Critically Impacts Procurement Lead Times",
-            date: "Oct 28, 2024",
-            author: "Supply Chain Analytics",
-            category: "Lean Manufacturing",
-            excerpt: "Long lead times are often caused by batch production. Read how the transition to one-piece flow transforms purchasing schedules.",
-            content: "When visiting a supplier with lead times over 4 weeks, you'll almost always find them utilizing large batch production. The misconception that 'running huge lots saves money' leads to massive inventory while ironically causing stock-outs for the specific parts customers actually need..."
-        },
-        {
-            id: 3,
-            title: "11 On-Site Scanning Techniques to Identify Top-Tier Suppliers",
-            date: "Sep 05, 2024",
-            author: "Supplier Audit Specialist",
-            category: "Supplier Audit",
-            excerpt: "Can you judge a factory just by looking at its floor? Essential tips for procurement officers conducting on-site audits based on 11 RPA categories.",
-            content: "A top-tier supplier feels different the moment you walk onto the floor. A single dropped screw or a neglected cleaning station in the corner are naked indicators of management quality. When procurement officers increase audit frequencies and build a database based on the 11 RPA categories..."
-        }
-    ]
-};
 
 export default function Magazine() {
     const { language } = useLanguage();
@@ -76,6 +15,9 @@ export default function Magazine() {
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState(null);
     const [showEditor, setShowEditor] = useState(false);
+
+    // View state: null means we are showing the list. An object means we are showing a specific post.
+    const [selectedPost, setSelectedPost] = useState(null);
 
     // Editor Form State
     const [newTitle, setNewTitle] = useState('');
@@ -97,6 +39,9 @@ export default function Magazine() {
             }));
             setPosts(fetchedPosts);
             setLoading(false);
+
+            // If viewing a post that got updated, we can optionally update selectedPost here,
+            // but for simplicity, we focus on the list.
         });
 
         return () => {
@@ -118,7 +63,7 @@ export default function Magazine() {
                 category: newCategory,
                 excerpt: newExcerpt || newContent.substring(0, 100) + '...',
                 content: newContent,
-                author: "Admin Director",
+                author: "Admin Editor",
                 date: new Date().toLocaleDateString(),
                 createdAt: serverTimestamp()
             });
@@ -127,6 +72,7 @@ export default function Magazine() {
             setNewCategory('');
             setNewExcerpt('');
             setNewContent('');
+            window.scrollTo(0, 0);
         } catch (err) {
             console.error("Save Error:", err);
             alert("Error saving post! Make sure your admin email matches.");
@@ -135,118 +81,156 @@ export default function Magazine() {
         }
     };
 
-    // Use fetched posts if available, otherwise fallback to language-specific defaults
-    const displayArticles = posts.length > 0 ? posts : (defaultArticles[language] || defaultArticles.en);
+    // ----- DETAIL VIEW RENDER -----
+    if (selectedPost) {
+        return (
+            <div className="stealth-layout animate-slide-up-fade" style={{ maxWidth: '600px', margin: '0 auto', padding: '24px 20px', paddingBottom: '120px', display: 'flex', flexDirection: 'column' }}>
+                <button
+                    onClick={() => { setSelectedPost(null); window.scrollTo(0, 0); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: '24px', fontSize: '15px', fontWeight: 'bold' }}
+                >
+                    <ArrowLeft size={20} />
+                    {language === 'ko' ? '목록으로 돌아가기' : 'Back to Magazine'}
+                </button>
 
+                <article style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent-primary)', padding: '6px 12px', borderRadius: '16px', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            {selectedPost.category}
+                        </span>
+                    </div>
+
+                    <h1 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-primary)', lineHeight: '1.4', marginTop: '8px' }}>
+                        {selectedPost.title}
+                    </h1>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', color: 'var(--text-muted)', fontSize: '13px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '20px', marginBottom: '20px' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <User size={14} /> {selectedPost.author}
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Clock size={14} /> {selectedPost.date}
+                        </span>
+                    </div>
+
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '16px', lineHeight: '1.8', whiteSpace: 'pre-wrap' }}>
+                        {selectedPost.content}
+                    </div>
+                </article>
+            </div>
+        );
+    }
+
+    // ----- LIST VIEW RENDER -----
     return (
         <div className="stealth-layout" style={{ maxWidth: '600px', margin: '0 auto', padding: '24px 20px', paddingBottom: '120px', display: 'flex', flexDirection: 'column' }}>
-            <header style={{ marginBottom: '32px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <BookOpen size={24} color="var(--accent-primary)" />
-                    <h1 className="title-large" style={{ color: 'var(--text-primary)' }}>{t.nav_magazine}</h1>
+            <header style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <BookOpen size={24} color="var(--accent-primary)" />
+                        <h1 className="title-large" style={{ color: 'var(--text-primary)' }}>{t.nav_magazine}</h1>
+                    </div>
+                    <p className="text-medium" style={{ color: 'var(--text-secondary)' }}>
+                        {language === 'ko' ? '제조업 전문 칼럼 및 인사이트' : 'B2B Manufacturing & Procurement Insights'}
+                    </p>
                 </div>
-                <p className="text-medium" style={{ color: 'var(--text-secondary)' }}>
-                    B2B Manufacturing & Procurement Insights
-                </p>
+                {isAdmin && (
+                    <button
+                        onClick={() => setShowEditor(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'var(--accent-primary)', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '12px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 12px rgba(217, 119, 87, 0.3)' }}
+                    >
+                        <PenTool size={16} />
+                        {language === 'ko' ? '새 글 작성' : 'New Post'}
+                    </button>
+                )}
             </header>
 
             {loading ? (
                 <div style={{ padding: '40px 0' }}>
-                    <LoadingSpinner fullScreen={false} message="Loading insights..." />
+                    <LoadingSpinner fullScreen={false} message={language === 'ko' ? "매거진 불러오는 중..." : "Loading magazine..."} />
+                </div>
+            ) : posts.length === 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', textAlign: 'center', backgroundColor: 'var(--bg-secondary)', borderRadius: '16px', border: '1px dashed var(--glass-border)' }}>
+                    <LayoutTemplate size={48} color="var(--text-muted)" style={{ marginBottom: '16px', opacity: 0.5 }} />
+                    <h3 style={{ fontSize: '18px', color: 'var(--text-primary)', fontWeight: 'bold', marginBottom: '8px' }}>
+                        {language === 'ko' ? '아직 작성된 매거진이 없습니다.' : 'No magazines published yet.'}
+                    </h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+                        {language === 'ko' ? '새로운 전문 칼럼과 인사이트가 곧 업데이트될 예정입니다.' : 'New expert columns and insights will be updated soon.'}
+                    </p>
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    {displayArticles.map((article) => (
-                        <article key={article.id} className="glass-panel" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', border: '1px solid var(--glass-border)' }}>
-                            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <span style={{ backgroundColor: 'rgba(217, 119, 87, 0.1)', color: 'var(--accent-primary)', padding: '4px 10px', borderRadius: '16px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                        {article.category}
-                                    </span>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', fontSize: '12px' }}>
-                                        <Clock size={12} /> {article.date}
-                                    </span>
-                                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {posts.map((article) => (
+                        <article
+                            key={article.id}
+                            onClick={() => { setSelectedPost(article); window.scrollTo(0, 0); }}
+                            className="glass-panel"
+                            style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', border: '1px solid var(--glass-border)', cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-warm)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ backgroundColor: 'rgba(217, 119, 87, 0.1)', color: 'var(--accent-primary)', padding: '4px 10px', borderRadius: '16px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                    {article.category}
+                                </span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', fontSize: '12px' }}>
+                                    <Clock size={12} /> {article.date}
+                                </span>
+                            </div>
 
-                                <h2 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', lineHeight: '1.4', marginTop: '4px', whiteSpace: 'pre-wrap' }}>
-                                    {article.title}
-                                </h2>
+                            <h2 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', lineHeight: '1.4', marginTop: '4px' }}>
+                                {article.title}
+                            </h2>
 
-                                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '8px', whiteSpace: 'pre-wrap' }}>
-                                    {article.excerpt}
-                                </p>
+                            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                {article.excerpt}
+                            </p>
 
-                                <div style={{ backgroundColor: 'var(--bg-primary)', padding: '16px', borderRadius: '8px', borderLeft: '3px solid var(--accent-primary)' }}>
-                                    <p style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
-                                        {article.content}
-                                    </p>
-                                </div>
-
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', marginTop: '8px', borderTop: '1px solid var(--glass-border)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '12px' }}>
-                                        <User size={14} /> {article.author}
-                                    </div>
-                                    <button style={{ color: 'var(--accent-primary)', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer' }}>
-                                        Read Further <ExternalLink size={14} />
-                                    </button>
-                                </div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingTop: '12px', marginTop: '4px', borderTop: '1px solid var(--glass-border)' }}>
+                                <span style={{ color: 'var(--accent-primary)', fontSize: '13px', fontWeight: '600' }}>
+                                    {language === 'ko' ? '칼럼 읽기 →' : 'Read Article →'}
+                                </span>
                             </div>
                         </article>
                     ))}
                 </div>
             )}
 
-            <div style={{ textAlign: 'center', marginTop: '40px', padding: '24px', border: '1px dashed var(--glass-border)', borderRadius: '12px', backgroundColor: 'var(--bg-secondary)' }}>
-                <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.5' }}>
-                    Google AdSense Placeholder Area <br />
-                    (Articles designed for High-Quality Content SEO Rating)
-                </p>
-            </div>
-
-            {/* Admin Floating Action Button */}
-            {isAdmin && !showEditor && (
-                <button
-                    onClick={() => setShowEditor(true)}
-                    style={{ position: 'fixed', bottom: '100px', right: '24px', width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(217, 119, 87, 0.4)', border: 'none', cursor: 'pointer', zIndex: 900 }}
-                >
-                    <Plus size={24} />
-                </button>
-            )}
-
             {/* Admin CMS Editor Modal */}
             {isAdmin && showEditor && (
-                <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(4px)' }}>
-                    <div className="glass-panel" style={{ width: '100%', maxWidth: '500px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflowY: 'auto', padding: '24px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)' }}>New Admin Post</h2>
-                            <button onClick={() => setShowEditor(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                                <X size={24} />
+                <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(8px)' }}>
+                    <div className="glass-panel animate-slide-up-fade" style={{ width: '100%', maxWidth: '600px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflowY: 'auto', padding: '32px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                            <h2 style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text-primary)' }}>{language === 'ko' ? '새 매거진 작성' : 'New Magazine Post'}</h2>
+                            <button onClick={() => setShowEditor(false)} style={{ background: 'var(--glass-bg)', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '8px', borderRadius: '50%' }}>
+                                <X size={20} />
                             </button>
                         </div>
 
-                        <form onSubmit={handleSavePost} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <form onSubmit={handleSavePost} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <div>
-                                <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '4px' }}>Title</label>
-                                <input required value={newTitle} onChange={e => setNewTitle(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '15px' }} />
+                                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px' }}>{language === 'ko' ? '제목' : 'Title'}</label>
+                                <input required value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder={language === 'ko' ? '블로그 포스트 제목' : 'Enter standard post title'} style={{ width: '100%', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '16px', outline: 'none' }} />
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '4px' }}>Category (e.g., Procurement Strategy)</label>
-                                <input required value={newCategory} onChange={e => setNewCategory(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '15px' }} />
+                                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px' }}>{language === 'ko' ? '카테고리' : 'Category'}</label>
+                                <input required value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="e.g. 품질경영 / 원가절감 / 스마트팩토리" style={{ width: '100%', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '16px', outline: 'none' }} />
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '4px' }}>Excerpt (Short Summary)</label>
-                                <textarea required value={newExcerpt} onChange={e => setNewExcerpt(e.target.value)} rows={2} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '15px', resize: 'vertical' }} />
+                                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px' }}>{language === 'ko' ? '본문 요약 (목록에 보여질 텍스트)' : 'Excerpt (Listed text)'}</label>
+                                <textarea required value={newExcerpt} onChange={e => setNewExcerpt(e.target.value)} rows={2} placeholder={language === 'ko' ? '글의 흥미를 끄는 요약본을 작성하세요.' : 'Short summary...'} style={{ width: '100%', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '16px', resize: 'vertical', outline: 'none' }} />
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '4px' }}>Full Content body</label>
-                                <textarea required value={newContent} onChange={e => setNewContent(e.target.value)} rows={6} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '15px', resize: 'vertical' }} />
+                                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px' }}>{language === 'ko' ? '전체 본문 내용' : 'Full Content Body'}</label>
+                                <textarea required value={newContent} onChange={e => setNewContent(e.target.value)} rows={10} placeholder={language === 'ko' ? '단락과 줄바꿈을 포함하여 본문을 자세히 작성하세요.' : 'Write the full article details here...'} style={{ width: '100%', padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '16px', resize: 'vertical', outline: 'none', lineHeight: '1.6' }} />
                             </div>
 
-                            <button disabled={isSaving} type="submit" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', backgroundColor: 'var(--accent-primary)', color: 'white', border: 'none', padding: '14px', borderRadius: '12px', fontWeight: 'bold', fontSize: '15px', marginTop: '8px', cursor: 'pointer' }}>
-                                {isSaving ? 'Publishing...' : <><Save size={18} /> Publish Post</>}
+                            <button disabled={isSaving} type="submit" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', backgroundColor: 'var(--text-primary)', color: 'var(--bg-primary)', border: 'none', padding: '18px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', marginTop: '12px', cursor: 'pointer', transition: 'opacity 0.2s', opacity: isSaving ? 0.7 : 1 }}>
+                                {isSaving ? <Loader className="animate-spin" size={20} /> : <><Save size={20} /> {language === 'ko' ? '매거진 발행하기' : 'Publish Magazine Post'}</>}
                             </button>
                         </form>
                     </div>

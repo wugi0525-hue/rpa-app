@@ -1,6 +1,6 @@
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { FileText, Search, User, Compass, HelpCircle, BookOpen } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useLanguage } from './LanguageContext';
@@ -36,47 +36,57 @@ function App() {
     return location.pathname === path ? 'nav-item active' : 'nav-item';
   };
 
+  const handleLogin = useCallback((user) => {
+    setCurrentUser(user);
+    navigate('/');
+  }, [navigate]);
+
   if (authLoading) return <LoadingSpinner message={t.dash_loading || 'Loading...'} />;
-  if (!currentUser) return <Login onLogin={setCurrentUser} />;
+
+  if (!currentUser) {
+    return <Login onLogin={handleLogin} />;
+  }
 
   return (
-    <div className="stealth-layout" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <div style={{ padding: '16px 24px 0 24px', display: 'flex', justifyContent: 'flex-end', zIndex: 100 }}>
-        <LanguageSelector />
-      </div>
-      {/* Route Content */}
-      <Routes>
-        <Route path="/" element={<Dashboard user={currentUser} />} />
-        <Route path="/audit" element={<AuditForm user={currentUser} />} />
-        <Route path="/guide" element={<CheatSheet />} />
-        <Route path="/magazine" element={<Magazine />} />
-        <Route path="/profile" element={<Profile user={currentUser} />} />
-      </Routes>
+    <>
+      <div className="stealth-layout" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <div style={{ padding: '16px 24px 0 24px', display: 'flex', justifyContent: 'flex-end', zIndex: 100 }}>
+          <LanguageSelector />
+        </div>
+        {/* Route Content */}
+        <Routes>
+          <Route path="/" element={<Dashboard user={currentUser} />} />
+          <Route path="/audit" element={<AuditForm user={currentUser} />} />
+          <Route path="/guide" element={<CheatSheet />} />
+          <Route path="/magazine" element={<Magazine />} />
+          <Route path="/profile" element={<Profile user={currentUser} />} />
+        </Routes>
 
-      {/* Persistent Stealth Bottom Navigation */}
-      <nav className="bottom-nav">
-        <button className={getNavClass('/')} onClick={() => navigate('/')}>
-          <Compass size={24} />
-          <span>{t.nav_audits}</span>
-        </button>
-        <button className={getNavClass('/magazine')} onClick={() => navigate('/magazine')}>
-          <BookOpen size={24} />
-          <span>{t.nav_magazine}</span>
-        </button>
-        <button className={getNavClass('/guide')} onClick={() => navigate('/guide')}>
-          <HelpCircle size={24} />
-          <span>{t.nav_guide}</span>
-        </button>
-        <button className={getNavClass('/audit')} onClick={() => navigate('/audit')}>
-          <FileText size={24} />
-          <span>{t.nav_record}</span>
-        </button>
-        <button className={getNavClass('/profile')} onClick={() => navigate('/profile')}>
-          <User size={24} />
-          <span>{t.nav_profile}</span>
-        </button>
-      </nav>
-    </div>
+        {/* Persistent Stealth Bottom Navigation */}
+        <nav className="bottom-nav">
+          <button className={getNavClass('/')} onClick={() => navigate('/')}>
+            <Compass size={24} />
+            <span>{t.nav_audits}</span>
+          </button>
+          <button className={getNavClass('/magazine')} onClick={() => navigate('/magazine')}>
+            <BookOpen size={24} />
+            <span>{t.nav_magazine}</span>
+          </button>
+          <button className={getNavClass('/guide')} onClick={() => navigate('/guide')}>
+            <HelpCircle size={24} />
+            <span>{t.nav_guide}</span>
+          </button>
+          <button className={getNavClass('/audit')} onClick={() => navigate('/audit')}>
+            <FileText size={24} />
+            <span>{t.nav_record}</span>
+          </button>
+          <button className={getNavClass('/profile')} onClick={() => navigate('/profile')}>
+            <User size={24} />
+            <span>{t.nav_profile}</span>
+          </button>
+        </nav>
+      </div>
+    </>
   );
 }
 
