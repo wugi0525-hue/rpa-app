@@ -1,7 +1,7 @@
 import asyncio
+import json
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-import sys
 
 async def main():
     server_params = StdioServerParameters(
@@ -13,13 +13,20 @@ async def main():
         async with stdio_client(server_params) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
-                print("--- AVAILABLE TOOLS ---")
                 tools = await session.list_tools()
+                
+                output = []
                 for tool in tools.tools:
-                    print(f"Tool Name: {tool.name}")
-                    print(f"Description: {tool.description}")
-                    print(f"Input Schema: {tool.inputSchema}")
-                    print("----------------------")
+                    output.append({
+                        "name": tool.name,
+                        "description": tool.description,
+                        "schema": tool.inputSchema
+                    })
+                    
+                with open("nlm_schema.json", "w", encoding="utf-8") as f:
+                    json.dump(output, f, indent=2, ensure_ascii=False)
+                    
+                print("Schema dumped successfully.")
     except Exception as e:
         print(f"Failed: {e}")
 
