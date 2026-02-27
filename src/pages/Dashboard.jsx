@@ -49,12 +49,12 @@ export default function Dashboard({ user }) {
             </header>
 
             {/* Fake Search Bar to disguise intent */}
-            <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', marginBottom: '24px' }}>
+            <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', marginBottom: '24px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--glass-border)', boxShadow: 'var(--shadow-warm)' }}>
                 <Search size={20} color="var(--text-muted)" />
                 <input
                     type="text"
                     placeholder={t.dash_search}
-                    style={{ background: 'transparent', border: 'none', color: 'white', width: '100%', outline: 'none', fontSize: '16px' }}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', width: '100%', outline: 'none', fontSize: '16px' }}
                 />
             </div>
 
@@ -91,11 +91,11 @@ export default function Dashboard({ user }) {
                             return (
                                 <div key={audit.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid var(--glass-border)' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <div style={{ width: 40, height: 40, borderRadius: '8px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{audit.companyName?.charAt(0) || '?'}</span>
+                                        <div style={{ width: 40, height: 40, borderRadius: '8px', background: 'rgba(37, 99, 235, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>{audit.companyName?.charAt(0) || '?'}</span>
                                         </div>
                                         <div>
-                                            <h3 style={{ fontSize: '16px', color: 'white', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <h3 style={{ fontSize: '16px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 {audit.companyName}
                                                 {audit.homepage && (
                                                     <a href={audit.homepage.startsWith('http') ? audit.homepage : `https://${audit.homepage}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)' }}>

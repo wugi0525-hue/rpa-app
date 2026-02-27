@@ -64,8 +64,8 @@ export default function CheatSheet() {
                             display: 'flex', alignItems: 'center', gap: '12px'
                         }}>
                             <div style={{
-                                width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(255,255,255,0.2)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold'
+                                width: '32px', height: '32px', borderRadius: '8px', background: 'var(--bg-primary)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-primary)', fontWeight: 'bold'
                             }}>
                                 {String(cat.id).padStart(2, '0')}
                             </div>

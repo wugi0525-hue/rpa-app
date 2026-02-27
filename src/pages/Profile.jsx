@@ -56,7 +56,7 @@ export default function Profile({ user }) {
                 {user?.isAnonymous ? (
                     <div style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '24px', borderRadius: '16px', border: '1px solid var(--accent-primary)', display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                            <div style={{ width: '64px', height: '64px', borderRadius: '16px', backgroundColor: 'var(--text-muted)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold' }}>
+                            <div style={{ width: '64px', height: '64px', borderRadius: '16px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-muted)', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold' }}>
                                 <User size={32} />
                             </div>
                             <div>
