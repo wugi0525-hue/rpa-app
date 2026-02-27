@@ -21,6 +21,7 @@ function App() {
   const location = useLocation();
   const [currentUser, setCurrentUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [hasStarted, setHasStarted] = useState(false);
   const { language } = useLanguage();
   const t = translations[language] || translations.en;
 

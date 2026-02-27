@@ -159,6 +159,13 @@ export default function Magazine() {
                         {language === 'ko' ? '새로운 전문 칼럼과 인사이트가 곧 업데이트될 예정입니다.' : 'New expert columns and insights will be updated soon.'}
                     </p>
                 </div>
+            ) : displayArticles.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
+                    <BookOpen size={48} color="rgba(255,255,255,0.1)" style={{ marginBottom: '16px' }} />
+                    <p style={{ fontSize: '16px' }}>
+                        {language === 'ko' ? "아직 등록된 매거진 아티클이 없습니다." : "No magazine articles have been published yet."}
+                    </p>
+                </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     {posts.map((article) => (
