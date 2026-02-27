@@ -1,16 +1,17 @@
+"use client";
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, Eye, ChevronDown, ChevronUp, Loader, Edit2, RotateCcw, Save, Share2, Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { rpaCategories } from '../data/categories';
-import { rpaQuestionnaire } from '../data/questionnaire';
-import { db } from '../firebase';
+import { rpaCategories } from '@/data/categories';
+import { rpaQuestionnaire } from '@/data/questionnaire';
+import { db } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useLanguage } from '../LanguageContext';
-import { translations } from '../i18n/translations';
-import GlossaryHighlighter from '../components/GlossaryHighlighter';
-import GlossaryModal from '../components/GlossaryModal';
-import { glossary } from '../data/glossary';
+import { useLanguage } from '@/LanguageContext';
+import { translations } from '@/i18n/translations';
+import GlossaryHighlighter from '@/components/GlossaryHighlighter';
+import GlossaryModal from '@/components/GlossaryModal';
+import { glossary } from '@/data/glossary';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 
 const ExpandableExample = ({ title, detail, type, onTermClick }) => {

@@ -1,7 +1,5 @@
 {
   "projects": {
-    "default": "rpa-stealth-audit-723"
-  },
-  "targets": {},
-  "etags": {}
+    "default": "rpa-app-v2-0525"
+  }
 }

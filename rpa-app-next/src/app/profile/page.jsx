@@ -1,8 +1,9 @@
+"use client";
 import React, { useState, useEffect } from 'react';
-import { useLanguage } from '../LanguageContext';
-import { translations } from '../i18n/translations';
+import { useLanguage } from '@/LanguageContext';
+import { translations } from '@/i18n/translations';
 import { User, LogOut, ShieldCheck, Database, Award, Mail } from 'lucide-react';
-import { auth, signOut, googleProvider, db } from '../firebase';
+import { auth, signOut, googleProvider, db } from '@/firebase';
 import { linkWithPopup } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 

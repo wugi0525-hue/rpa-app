@@ -1,11 +1,12 @@
+"use client";
 import React, { useState, useEffect } from 'react';
-import { useLanguage } from '../LanguageContext';
-import { translations } from '../i18n/translations';
+import { useLanguage } from '@/LanguageContext';
+import { translations } from '@/i18n/translations';
 import { BookOpen, Clock, User, Plus, X, Save, ArrowLeft, PenTool, LayoutTemplate } from 'lucide-react';
-import { auth, db, ADMIN_EMAIL } from '../firebase';
+import { auth, db, ADMIN_EMAIL } from '@/firebase';
 import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import LoadingSpinner from '../components/LoadingSpinner';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function Magazine() {
     const { language } = useLanguage();
@@ -157,13 +158,6 @@ export default function Magazine() {
                     </h3>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
                         {language === 'ko' ? '새로운 전문 칼럼과 인사이트가 곧 업데이트될 예정입니다.' : 'New expert columns and insights will be updated soon.'}
-                    </p>
-                </div>
-            ) : displayArticles.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
-                    <BookOpen size={48} color="rgba(255,255,255,0.1)" style={{ marginBottom: '16px' }} />
-                    <p style={{ fontSize: '16px' }}>
-                        {language === 'ko' ? "아직 등록된 매거진 아티클이 없습니다." : "No magazine articles have been published yet."}
                     </p>
                 </div>
             ) : (
