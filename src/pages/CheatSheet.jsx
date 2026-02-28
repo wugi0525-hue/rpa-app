@@ -49,15 +49,15 @@ export default function CheatSheet() {
     const [selectedTermId, setSelectedTermId] = useState(null);
 
     return (
-        <div className="stealth-layout" style={{ maxWidth: '600px', margin: '0 auto', padding: '24px 20px', paddingBottom: '120px' }}>
-            <header style={{ marginBottom: '32px' }}>
-                <h1 className="title-large" style={{ color: 'var(--text-primary)', marginBottom: '8px' }}>{t.guide_title}</h1>
+        <div className="stealth-layout layout-standard">
+            <header className="page-header">
+                <h1 className="title-large">{t.guide_title}</h1>
                 <p className="text-medium">{t.guide_subtitle}</p>
             </header>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                 {categoriesList.map(cat => (
-                    <div key={cat.id} className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
+                    <div key={cat.id} className="content-card" style={{ padding: '0', overflow: 'hidden' }}>
                         <div style={{
                             padding: '16px 20px',
                             background: 'var(--accent-primary)',

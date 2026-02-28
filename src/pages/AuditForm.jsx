@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, Eye, ChevronDown, ChevronUp, Loader, Edit2, RotateCcw, Save, Share2, Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import { rpaCategories } from '../data/categories';
 import { rpaQuestionnaire } from '../data/questionnaire';
 import { db } from '../firebase';
@@ -51,19 +52,24 @@ const ExpandableExample = ({ title, detail, type, onTermClick }) => {
 };
 
 export default function AuditForm({ user }) {
-    // Init state from local storage or defaults
-    const savedState = JSON.parse(localStorage.getItem('rpa_audit_draft')) || {};
+    const location = useLocation();
+    const navigate = useNavigate();
+    const isViewMode = location.state && location.state.viewAudit;
+    const viewAuditData = isViewMode ? location.state.viewAudit : null;
 
-    const [auditPhase, setAuditPhase] = useState(savedState.auditPhase || 'demographics');
+    // Init state from local storage or defaults (or viewAuditData if in view mode)
+    const savedState = isViewMode ? {} : JSON.parse(localStorage.getItem('rpa_audit_draft')) || {};
+
+    const [auditPhase, setAuditPhase] = useState(isViewMode ? 'result' : (savedState.auditPhase || 'demographics'));
     const [currentIndex, setCurrentIndex] = useState(savedState.currentIndex || 0);
-    const [scores, setScores] = useState(savedState.scores || {});
-    const [qAnswers, setQAnswers] = useState(savedState.qAnswers || {});
-    const [ultimateAnswer, setUltimateAnswer] = useState(savedState.ultimateAnswer || null);
+    const [scores, setScores] = useState(isViewMode ? viewAuditData.scores : (savedState.scores || {}));
+    const [qAnswers, setQAnswers] = useState(isViewMode ? viewAuditData.questionnaireInfo : (savedState.qAnswers || {}));
+    const [ultimateAnswer, setUltimateAnswer] = useState(isViewMode ? viewAuditData.ultimateAnswer : (savedState.ultimateAnswer || null));
     const [companyInfo, setCompanyInfo] = useState({
-        name: savedState.companyInfo?.name || '',
-        products: savedState.companyInfo?.products || '',
-        homepage: savedState.companyInfo?.homepage || '',
-        evaluator: savedState.companyInfo?.evaluator || ''
+        name: isViewMode ? viewAuditData.companyName : (savedState.companyInfo?.name || ''),
+        products: isViewMode ? viewAuditData.products : (savedState.companyInfo?.products || ''),
+        homepage: isViewMode ? viewAuditData.homepage : (savedState.companyInfo?.homepage || ''),
+        evaluator: isViewMode ? viewAuditData.evaluator : (savedState.companyInfo?.evaluator || '')
     });
     const [isSaving, setIsSaving] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
@@ -74,8 +80,9 @@ export default function AuditForm({ user }) {
     const { language } = useLanguage();
     const t = translations[language] || translations.en;
 
-    // Auto-save effect
+    // Auto-save effect (only if not in view mode)
     useEffect(() => {
+        if (isViewMode) return;
         const stateToSave = {
             auditPhase,
             currentIndex,
@@ -85,7 +92,7 @@ export default function AuditForm({ user }) {
             companyInfo
         };
         localStorage.setItem('rpa_audit_draft', JSON.stringify(stateToSave));
-    }, [auditPhase, currentIndex, scores, qAnswers, ultimateAnswer, companyInfo]);
+    }, [auditPhase, currentIndex, scores, qAnswers, ultimateAnswer, companyInfo, isViewMode]);
 
     const categoriesList = rpaCategories[language] || rpaCategories.en;
     const questionnaireList = rpaQuestionnaire[language] || rpaQuestionnaire.en;
@@ -180,12 +187,14 @@ export default function AuditForm({ user }) {
 
     if (auditPhase === 'ultimate') {
         return (
-            <div className="stealth-layout" style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', minHeight: '100vh', paddingBottom: '80px', paddingTop: '64px', alignItems: 'center', justifyContent: 'center' }}>
-                <h1 style={{ color: 'var(--text-primary)', fontSize: '24px', fontWeight: '700', marginBottom: '16px', textAlign: 'center' }}>{t.result_ultimate}</h1>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '18px', marginBottom: '40px', textAlign: 'center', lineHeight: '1.6' }}>
-                    {t.result_given} <br />
-                    <strong style={{ color: 'var(--danger)', fontSize: '20px' }}>{t.result_buy}</strong>
-                </p>
+            <div className="stealth-layout layout-standard" style={{ paddingBottom: '80px', paddingTop: '96px' }}>
+                <header className="page-header">
+                    <h1 className="title-large">{t.result_ultimate}</h1>
+                    <p className="text-medium">
+                        {t.result_given} <br />
+                        <strong style={{ color: 'var(--danger)', fontSize: '16px' }}>{t.result_buy}</strong>
+                    </p>
+                </header>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', width: '100%' }}>
                     <button
                         disabled={isSaving}
@@ -214,29 +223,83 @@ export default function AuditForm({ user }) {
         const diagnosis = getDiagnosis(totalScore, yesCount, language);
 
         const handleExportPdf = async () => {
-            if (!pdfRef.current) return;
             setIsExporting(true);
+
+            // Temporarily make the hidden printable report visible for capture
+            const printElement = document.getElementById('printable-audit-report');
+            if (!printElement) {
+                console.error("Printable element not found");
+                setIsExporting(false);
+                return;
+            }
+
+            // Temporarily pull the element into view for capture
+            printElement.style.left = '0px';
+
             try {
-                // Try to hide action buttons during PDF capture
-                const actionButtons = document.getElementById('report-action-buttons');
-                if (actionButtons) actionButtons.style.display = 'none';
+                // Wait a moment for styles to settle and React to re-render
+                await new Promise(resolve => setTimeout(resolve, 500));
 
-                const canvas = await html2canvas(pdfRef.current, {
-                    scale: 2,
-                    useCORS: true,
-                    backgroundColor: '#ffffff'
-                });
-
-                if (actionButtons) actionButtons.style.display = 'flex';
-
-                const imgData = canvas.toDataURL('image/png');
+                const pdfWidth = 210; // A4 width in mm
+                const pdfHeight = 297; // A4 height in mm
                 const pdf = new jsPDF('p', 'mm', 'a4');
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-                const pdfBlob = pdf.output('blob');
+                let heightLeft1 = 0;
+                let position1 = 0;
+
+                // 1. Capture Phase 1 (Score Summary + 11 Categories)
+                const phase1Element = document.getElementById('pdf-phase1');
+                if (phase1Element) {
+                    const canvas1 = await html2canvas(phase1Element, { scale: 2, useCORS: true });
+                    const imgData1 = canvas1.toDataURL('image/jpeg', 0.98);
+                    const canvasHeightInMm1 = (canvas1.height * pdfWidth) / canvas1.width;
+
+                    heightLeft1 = canvasHeightInMm1;
+
+                    pdf.addImage(imgData1, 'JPEG', 0, position1, pdfWidth, canvasHeightInMm1);
+                    heightLeft1 -= pdfHeight;
+
+                    while (heightLeft1 > 0) {
+                        position1 -= pdfHeight;
+                        pdf.addPage();
+                        pdf.addImage(imgData1, 'JPEG', 0, position1, pdfWidth, canvasHeightInMm1);
+                        heightLeft1 -= pdfHeight;
+                    }
+                }
+
+                // 2. Capture Phase 2 (20-Item Questionnaire) and put on a NEW page
+                const phase2Element = document.getElementById('pdf-phase2');
+                if (phase2Element) {
+                    // Check how much of the CURRENT page was used by Phase 1
+                    const consumedOnCurrentPage = heightLeft1 + pdfHeight;
+
+                    // If Phase 1 used more than 30mm of the current page, we consider it "full" and add a new page.
+                    // If it used less than 30mm, it's just a tiny bleed (e.g. margin/padding whitespaces) that created an almost-blank page.
+                    // We reuse this almost-blank page for Phase 2, which will overpaint the tiny bleed since Phase 2 has a white background.
+                    if (consumedOnCurrentPage > 30) {
+                        pdf.addPage();
+                    }
+
+                    const canvas2 = await html2canvas(phase2Element, { scale: 2, useCORS: true });
+                    const imgData2 = canvas2.toDataURL('image/jpeg', 0.98);
+                    const canvasHeightInMm2 = (canvas2.height * pdfWidth) / canvas2.width;
+
+                    let heightLeft2 = canvasHeightInMm2;
+                    let position2 = 0; // Starts at top of the new page
+
+                    pdf.addImage(imgData2, 'JPEG', 0, position2, pdfWidth, canvasHeightInMm2);
+                    heightLeft2 -= pdfHeight;
+
+                    while (heightLeft2 > 0) {
+                        position2 -= pdfHeight;
+                        pdf.addPage();
+                        pdf.addImage(imgData2, 'JPEG', 0, position2, pdfWidth, canvasHeightInMm2);
+                        heightLeft2 -= pdfHeight;
+                    }
+                }
+
                 const fileName = `RPA_Report_${companyInfo.name || 'Facility'}.pdf`;
+                const pdfBlob = pdf.output('blob');
                 const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -250,35 +313,46 @@ export default function AuditForm({ user }) {
                     } catch (error) {
                         if (error.name !== 'AbortError') {
                             console.error('Error sharing:', error);
-                            pdf.save(fileName);
                         }
                     }
                 } else {
-                    pdf.save(fileName);
-                    alert(language === 'ko' ? "PDF 다운로드가 완료되었습니다. 메일 앱에서 첨부해 주세요." : "PDF downloaded. Please attach it to your email.");
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(pdfBlob);
+                    link.download = fileName;
+                    link.click();
+                    alert(language === 'ko' ? "PDF 다운로드가 완료되었습니다." : "PDF downloaded.");
                 }
             } catch (err) {
                 console.error("PDF generation failed", err);
                 alert("Failed to generate PDF.");
-                // Restore button visibility just in case
-                const actionButtons = document.getElementById('report-action-buttons');
-                if (actionButtons) actionButtons.style.display = 'flex';
             } finally {
                 setIsExporting(false);
+                if (printElement) printElement.style.left = '-9999px';
             }
         };
 
         return (
-            <div className="stealth-layout" ref={pdfRef} style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '120px', backgroundColor: '#fafafa', minHeight: '100vh', padding: '20px' }}>
-                <div style={{ textAlign: 'center', marginBottom: '8px', position: 'relative' }}>
-                    <button onClick={handleRestart} style={{ position: 'absolute', right: '0px', top: '0px', padding: '8px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'var(--text-muted)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                        <RotateCcw size={16} /> <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{t.btn_restart}</span>
-                    </button>
-                    <h1 className="title-large" style={{ marginTop: '16px' }}>{t.report_title}</h1>
-                    <p style={{ color: 'var(--accent-primary)', fontWeight: 'bold', fontSize: '18px', marginTop: '4px' }}>{companyInfo.name || "Unknown Facility"}</p>
+            <div className="stealth-layout layout-standard" ref={pdfRef} style={{ gap: '24px', paddingTop: '64px' }}>
+                <div style={{ position: 'relative', height: '40px', marginBottom: '8px' }}>
+                    <div id="report-header-buttons" style={{ display: isExporting ? 'none' : 'block' }}>
+                        {!isViewMode ? (
+                            <button onClick={handleRestart} style={{ position: 'absolute', right: '0px', top: '0px', padding: '8px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'var(--text-muted)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                <RotateCcw size={16} /> <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{t.btn_restart}</span>
+                            </button>
+                        ) : (
+                            <button onClick={() => navigate('/')} style={{ position: 'absolute', left: '0px', top: '0px', padding: '8px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'var(--text-muted)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                <ChevronLeft size={16} /> <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{language === 'ko' ? '목록으로' : 'Back'}</span>
+                            </button>
+                        )}
+                    </div>
                 </div>
 
-                <div className="glass-panel" style={{ textAlign: 'center', padding: '32px 20px', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)' }}>
+                <header className="page-header">
+                    <h1 className="title-large">{t.report_title}</h1>
+                    <p className="text-medium" style={{ color: 'var(--accent-primary)', fontWeight: '600' }}>{companyInfo.name || "Unknown Facility"}</p>
+                </header>
+
+                <div className="content-card" style={{ textAlign: 'center', padding: '32px 20px', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                         <div>
                             <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '8px' }}>{t.result_total}</p>
@@ -297,7 +371,7 @@ export default function AuditForm({ user }) {
                     </div>
                 </div>
 
-                <div className="glass-panel" style={{ borderLeft: `4px solid ${diagnosis.color}`, marginBottom: '16px' }}>
+                <div className="content-card" style={{ borderLeft: `4px solid ${diagnosis.color}`, marginBottom: '16px' }}>
                     <h2 style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                         {language === 'ko' ? '초기 진단 결과 (Diagnosis)' : 'Initial Diagnosis'}
                     </h2>
@@ -310,16 +384,18 @@ export default function AuditForm({ user }) {
                 </div>
 
                 {ultimateAnswer && (
-                    <div className="glass-panel" style={{ borderLeft: `4px solid ${ultimateAnswer === 'YES' ? 'var(--success)' : 'var(--danger)'}`, display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px' }}>
+                    <div className="content-card" style={{ borderLeft: `4px solid ${ultimateAnswer === 'YES' ? 'var(--success)' : 'var(--danger)'}`, display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h2 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)', margin: 0 }}>{t.result_ultimate}</h2>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ fontSize: '20px', fontWeight: 'bold', color: ultimateAnswer === 'YES' ? 'var(--success)' : 'var(--danger)' }}>
                                     {ultimateAnswer === 'YES' ? t.result_yes : t.result_no}
                                 </span>
-                                <button onClick={() => setEditingItem(editingItem === 'ult' ? null : 'ult')} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
-                                    {editingItem === 'ult' ? <ChevronUp size={16} /> : <Edit2 size={16} />}
-                                </button>
+                                {!isViewMode && (
+                                    <button onClick={() => setEditingItem(editingItem === 'ult' ? null : 'ult')} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
+                                        {editingItem === 'ult' ? <ChevronUp size={16} /> : <Edit2 size={16} />}
+                                    </button>
+                                )}
                             </div>
                         </div>
                         {editingItem === 'ult' && (
@@ -331,26 +407,28 @@ export default function AuditForm({ user }) {
                     </div>
                 )}
 
-                <div className="glass-panel" style={{ marginBottom: '16px', padding: '20px 10px', height: '350px' }}>
+                <div className="content-card" style={{ marginBottom: '16px', padding: '20px 10px', height: '350px' }}>
                     <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '8px', textAlign: 'center' }}>
                         {language === 'ko' ? '레이더 차트 분석 (Radar Analysis)' : 'Radar Gap Analysis'}
                     </h2>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={categoriesList.map((cat, idx) => ({
-                            subject: cat.subtitle,
-                            score: scores[idx] || 0,
-                            fullMark: 11,
-                        }))}>
-                            <PolarGrid stroke="var(--glass-border)" />
-                            <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
-                            <PolarRadiusAxis angle={30} domain={[0, 11]} tick={{ fill: 'var(--text-muted)', fontSize: 10 }} />
-                            <Tooltip contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--glass-border)', color: 'var(--text-primary)' }} itemStyle={{ color: 'var(--accent-primary)', fontWeight: 'bold' }} />
-                            <Radar name="Score" dataKey="score" stroke="var(--accent-primary)" fill="var(--accent-primary)" fillOpacity={0.4} />
-                        </RadarChart>
-                    </ResponsiveContainer>
+                    <div style={{ position: 'relative', width: '100%', height: '280px' }}>
+                        <ResponsiveContainer width="100%" height={280}>
+                            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={categoriesList.map((cat, idx) => ({
+                                subject: cat.subtitle,
+                                score: scores[idx] || 0,
+                                fullMark: 11,
+                            }))}>
+                                <PolarGrid stroke="var(--glass-border)" />
+                                <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
+                                <PolarRadiusAxis angle={30} domain={[0, 11]} tick={{ fill: 'var(--text-muted)', fontSize: 10 }} />
+                                <Tooltip contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--glass-border)', color: 'var(--text-primary)' }} itemStyle={{ color: 'var(--accent-primary)', fontWeight: 'bold' }} />
+                                <Radar name="Score" dataKey="score" stroke="var(--accent-primary)" fill="var(--accent-primary)" fillOpacity={0.4} />
+                            </RadarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
 
-                <div className="glass-panel" style={{ marginBottom: '16px' }}>
+                <div className="content-card" style={{ marginBottom: '16px' }}>
                     <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '16px' }}>{language === 'ko' ? '상세 평가 항목 (Category Scores)' : 'Detailed Category Scores'}</h2>
                     {categoriesList.map((cat, idx) => (
                         <div key={cat.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px 0', borderBottom: '1px solid var(--glass-border)' }}>
@@ -365,9 +443,11 @@ export default function AuditForm({ user }) {
                                     }}>
                                         {scores[idx] !== undefined ? `${scores[idx]} / 11` : 'Skipped'}
                                     </span>
-                                    <button onClick={() => setEditingItem(editingItem === `cat-${idx}` ? null : `cat-${idx}`)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
-                                        {editingItem === `cat-${idx}` ? <ChevronUp size={16} /> : <Edit2 size={16} />}
-                                    </button>
+                                    {!isViewMode && (
+                                        <button onClick={() => setEditingItem(editingItem === `cat-${idx}` ? null : `cat-${idx}`)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
+                                            {editingItem === `cat-${idx}` ? <ChevronUp size={16} /> : <Edit2 size={16} />}
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
@@ -386,7 +466,7 @@ export default function AuditForm({ user }) {
                     ))}
                 </div>
 
-                <div className="glass-panel" style={{ marginBottom: '16px' }}>
+                <div className="content-card" style={{ marginBottom: '16px' }}>
                     <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '16px' }}>{language === 'ko' ? '린 시스템 점검 (Lean System Check)' : 'Lean System Questionnaire'}</h2>
                     {questionnaireList.map((q, idx) => (
                         <div key={q.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px 0', borderBottom: '1px solid var(--glass-border)' }}>
@@ -403,9 +483,11 @@ export default function AuditForm({ user }) {
                                     }}>
                                         {qAnswers[idx] || 'Skipped'}
                                     </span>
-                                    <button onClick={() => setEditingItem(editingItem === `q-${idx}` ? null : `q-${idx}`)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
-                                        {editingItem === `q-${idx}` ? <ChevronUp size={16} /> : <Edit2 size={16} />}
-                                    </button>
+                                    {!isViewMode && (
+                                        <button onClick={() => setEditingItem(editingItem === `q-${idx}` ? null : `q-${idx}`)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
+                                            {editingItem === `q-${idx}` ? <ChevronUp size={16} /> : <Edit2 size={16} />}
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                             {editingItem === `q-${idx}` && (
@@ -418,45 +500,47 @@ export default function AuditForm({ user }) {
                     ))}
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
-                    <button
-                        disabled={isSaving}
-                        onClick={async () => {
-                            setIsSaving(true);
-                            try {
-                                await addDoc(collection(db, "audits"), {
-                                    userId: user.uid,
-                                    companyName: companyInfo.name,
-                                    products: companyInfo.products,
-                                    homepage: companyInfo.homepage,
-                                    evaluator: companyInfo.evaluator,
-                                    totalScore: totalScore,
-                                    yesCount: yesCount,
-                                    ultimateAnswer: ultimateAnswer,
-                                    scores: scores,
-                                    questionnaireInfo: qAnswers,
-                                    createdAt: serverTimestamp()
-                                });
-                                alert(t.alert_saved.replace('{name}', companyInfo.name || 'Unknown Facility'));
-                                window.scrollTo(0, 0);
-                                setAuditPhase('demographics');
-                                setCurrentIndex(0);
-                                setScores({});
-                                setQAnswers({});
-                                setUltimateAnswer(null);
-                                setCompanyInfo({ name: '', products: '', homepage: '', evaluator: '' });
-                            } catch (error) {
-                                console.error("Error saving document: ", error);
-                                alert("An error occurred while saving.");
-                            } finally {
-                                setIsSaving(false);
-                            }
-                        }}
-                        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: 'var(--accent-primary)', color: 'white', border: 'none', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', opacity: isSaving ? 0.7 : 1 }}
-                    >
-                        {isSaving ? <Loader className="animate-spin" size={20} /> : null}
-                        {isSaving ? 'Saving...' : t.btn_save}
-                    </button>
+                <div style={{ display: isExporting ? 'none' : 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+                    {!isViewMode && (
+                        <button
+                            disabled={isSaving}
+                            onClick={async () => {
+                                setIsSaving(true);
+                                try {
+                                    await addDoc(collection(db, "audits"), {
+                                        userId: user.uid,
+                                        companyName: companyInfo.name,
+                                        products: companyInfo.products,
+                                        homepage: companyInfo.homepage,
+                                        evaluator: companyInfo.evaluator,
+                                        totalScore: totalScore,
+                                        yesCount: yesCount,
+                                        ultimateAnswer: ultimateAnswer,
+                                        scores: scores,
+                                        questionnaireInfo: qAnswers,
+                                        createdAt: serverTimestamp()
+                                    });
+                                    alert(t.alert_saved.replace('{name}', companyInfo.name || 'Unknown Facility'));
+                                    window.scrollTo(0, 0);
+                                    setAuditPhase('demographics');
+                                    setCurrentIndex(0);
+                                    setScores({});
+                                    setQAnswers({});
+                                    setUltimateAnswer(null);
+                                    setCompanyInfo({ name: '', products: '', homepage: '', evaluator: '' });
+                                } catch (error) {
+                                    console.error("Error saving document: ", error);
+                                    alert("An error occurred while saving.");
+                                } finally {
+                                    setIsSaving(false);
+                                }
+                            }}
+                            style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: 'var(--accent-primary)', color: 'white', border: 'none', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', opacity: isSaving ? 0.7 : 1 }}
+                        >
+                            {isSaving ? <Loader className="animate-spin" size={20} /> : null}
+                            {isSaving ? 'Saving...' : t.btn_save}
+                        </button>
+                    )}
 
                     <div id="report-action-buttons" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         <button
@@ -557,6 +641,161 @@ export default function AuditForm({ user }) {
                         </div>
                     )}
                 </div>
+
+                {/* Hidden A4 Print Template for PDF Export */}
+                <div id="printable-audit-report" style={{
+                    position: 'absolute',
+                    top: '-9999px',
+                    left: '-9999px',
+                    width: '800px', // Fixed desktop width to simulate A4 horizontally
+                    backgroundColor: 'white',
+                    color: 'black',
+                    zIndex: -1,
+                    padding: '40px',
+                    boxSizing: 'border-box',
+                    fontFamily: 'sans-serif',
+                    height: 'max-content',
+                    overflow: 'visible'
+                }}>
+
+                    {/* PHASE 1 WRAPPER */}
+                    <div id="pdf-phase1" style={{ width: '100%', height: 'max-content', paddingBottom: '20px' }}>
+                        <div style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '2px solid #334155', paddingBottom: '20px' }}>
+                            <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#0f172a', margin: '0 0 10px 0' }}>RPA Suitability Audit Report</h1>
+                            <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Generated on {new Date().toLocaleDateString()}</p>
+                        </div>
+
+                        <div style={{ marginBottom: '30px' }}>
+                            <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #cbd5e1', paddingBottom: '8px', marginBottom: '16px', color: '#334155' }}>
+                                Company Info
+                            </h2>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                                <tbody>
+                                    <tr>
+                                        <td style={{ padding: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: 'bold', width: '25%' }}>Company Name</td>
+                                        <td style={{ padding: '8px', border: '1px solid #e2e8f0', width: '25%' }}>{companyInfo.name || '-'}</td>
+                                        <td style={{ padding: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: 'bold', width: '25%' }}>Main Products</td>
+                                        <td style={{ padding: '8px', border: '1px solid #e2e8f0', width: '25%' }}>{companyInfo.products || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{ padding: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: 'bold' }}>Company Homepage</td>
+                                        <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>{companyInfo.homepage || '-'}</td>
+                                        <td style={{ padding: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: 'bold' }}>Evaluator</td>
+                                        <td style={{ padding: '8px', border: '1px solid #e2e8f0' }}>{companyInfo.evaluator || '-'}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style={{ marginBottom: '30px' }}>
+                            <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #cbd5e1', paddingBottom: '8px', marginBottom: '16px', color: '#334155' }}>
+                                Summary
+                            </h2>
+
+                            <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+                                {/* Left side: Table */}
+                                <div style={{ flex: '1' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', height: '100%' }}>
+                                        <tbody>
+                                            <tr style={{ height: '40px' }}>
+                                                <td style={{ padding: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: 'bold', width: '40%' }}>Total RPA Score</td>
+                                                <td style={{ padding: '8px', border: '1px solid #e2e8f0', textAlign: 'center', fontSize: '16px', fontWeight: 'bold' }}>{Math.round(totalScore)} / 121</td>
+                                            </tr>
+                                            <tr style={{ height: '40px' }}>
+                                                <td style={{ padding: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: 'bold' }}>Lean System</td>
+                                                <td style={{ padding: '8px', border: '1px solid #e2e8f0', textAlign: 'center', fontSize: '16px', fontWeight: 'bold' }}>{yesCount} / 20</td>
+                                            </tr>
+                                            <tr style={{ height: '40px' }}>
+                                                <td style={{ padding: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: 'bold' }}>초기 진단 결과</td>
+                                                <td style={{ padding: '8px', border: '1px solid #e2e8f0', textAlign: 'center', fontSize: '14px', fontWeight: 'bold', color: '#1e293b' }}>
+                                                    {diagnosis.resultText}
+                                                </td>
+                                            </tr>
+                                            <tr style={{ height: '40px' }}>
+                                                <td style={{ padding: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontWeight: 'bold' }}>최종 질문 (Buy?)</td>
+                                                <td style={{ padding: '8px', border: '1px solid #e2e8f0', textAlign: 'center', fontSize: '16px', fontWeight: 'bold', color: ultimateAnswer === 'YES' ? '#16a34a' : (ultimateAnswer === 'NO' ? '#dc2626' : '#64748b') }}>
+                                                    {ultimateAnswer || 'Not Answered'}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Right side: Radar Chart */}
+                                <div style={{ width: '350px', height: '220px', backgroundColor: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={categoriesList.map((cat, idx) => ({
+                                            subject: cat.subtitle,
+                                            score: scores[idx] || 0,
+                                            fullMark: 11,
+                                        }))}>
+                                            <PolarGrid gridType="polygon" />
+                                            <PolarAngleAxis dataKey="subject" tick={{ fill: '#475569', fontSize: 10 }} />
+                                            <PolarRadiusAxis angle={30} domain={[0, 11]} tick={{ fontSize: 9 }} />
+                                            <Radar name="Score" dataKey="score" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.5} />
+                                        </RadarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ marginBottom: '30px' }}>
+                            <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #cbd5e1', paddingBottom: '8px', marginBottom: '16px', color: '#334155' }}>
+                                Phase 1: RPA 11 Categories
+                            </h2>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                                <thead>
+                                    <tr style={{ backgroundColor: '#f1f5f9' }}>
+                                        <th style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'left', width: '10%' }}>No.</th>
+                                        <th style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'left', width: '75%' }}>Category</th>
+                                        <th style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '15%' }}>Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {categoriesList.map((c, i) => (
+                                        <tr key={i}>
+                                            <td style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'center' }}>{i + 1}</td>
+                                            <td style={{ padding: '4px', border: '1px solid #cbd5e1' }}>{c.title}</td>
+                                            <td style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'center', fontWeight: 'bold' }}>
+                                                {scores[i] !== undefined ? scores[i] : '-'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* PHASE 2 WRAPPER - rendered but separated via html2canvas calls */}
+                    <div id="pdf-phase2" style={{ width: '100%', height: 'max-content', paddingTop: '20px' }}>
+                        <div style={{ marginBottom: '20px' }}>
+                            <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#0f172a', margin: '0 0 10px 0' }}>RPA Suitability Audit Report (Cont.)</h1>
+                        </div>
+                        <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #cbd5e1', paddingBottom: '2mm', marginBottom: '4mm', color: '#334155' }}>
+                            Phase 2: 20-Item Lean Questionnaire
+                        </h2>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', pageBreakInside: 'auto' }}>
+                            <thead>
+                                <tr style={{ backgroundColor: '#f1f5f9' }}>
+                                    <th style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'left', width: '10%' }}>No.</th>
+                                    <th style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'left', width: '75%' }}>Question</th>
+                                    <th style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'center', width: '15%' }}>Answer</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {questionnaireList.map((q, i) => (
+                                    <tr key={i}>
+                                        <td style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'center' }}>Q{i + 1}</td>
+                                        <td style={{ padding: '4px', border: '1px solid #cbd5e1' }}>{q.text}</td>
+                                        <td style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'center', fontWeight: 'bold', color: qAnswers[i] === 'YES' ? '#16a34a' : (qAnswers[i] === 'NO' ? '#dc2626' : '#64748b') }}>
+                                            {qAnswers[i] || '-'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         );
     }
@@ -565,13 +804,13 @@ export default function AuditForm({ user }) {
         const isInfoReady = (companyInfo?.name || '').trim().length > 0 && (companyInfo?.products || '').trim().length > 0;
 
         return (
-            <div className="stealth-layout" style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '120px' }}>
-                <header style={{ marginBottom: '32px' }}>
-                    <h1 className="title-large" style={{ color: 'var(--text-primary)', marginBottom: '8px' }}>New Audit</h1>
+            <div className="stealth-layout layout-standard">
+                <header className="page-header">
+                    <h1 className="title-large">New Audit</h1>
                     <p className="text-medium">Enter the basic profile of the target facility.</p>
                 </header>
 
-                <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div className="content-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div>
                         <label style={{ display: 'block', fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: '600' }}>{t.form_name}</label>
                         <input
@@ -653,14 +892,14 @@ export default function AuditForm({ user }) {
         };
 
         return (
-            <div className="stealth-layout" style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '120px' }}>
-                <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <p className="text-small" style={{ color: 'var(--text-muted)' }}>{t.phase_2}</p>
+            <div className="stealth-layout layout-standard">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <p className="text-medium" style={{ color: 'var(--text-muted)' }}>{t.phase_2}</p>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                         <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{currentIndex + 1}</span>
                         <span style={{ color: 'var(--text-muted)' }}>/ {standardQLength}</span>
                     </div>
-                </header>
+                </div>
 
                 <div key={currentIndex} className="animate-slide-up-fade">
                     <div style={{ width: '100%', height: '4px', backgroundColor: 'var(--glass-bg)', borderRadius: '2px', marginBottom: '24px', overflow: 'hidden' }}>
@@ -672,7 +911,7 @@ export default function AuditForm({ user }) {
                         }}></div>
                     </div>
 
-                    <div className="glass-panel" style={{ padding: '40px 24px', marginBottom: '32px', textAlign: 'center', minHeight: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div className="content-card" style={{ padding: '40px 24px', marginBottom: '32px', textAlign: 'center', minHeight: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                         <h2 style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text-primary)', lineHeight: '1.5', wordBreak: 'keep-all' }}>
                             <GlossaryHighlighter text={currentQ.text} onTermClick={setSelectedTermId} />
                         </h2>
@@ -739,15 +978,15 @@ export default function AuditForm({ user }) {
     }
 
     return (
-        <div className="stealth-layout" style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '120px' }}>
+        <div className="stealth-layout layout-standard">
             {/* Stealthy App Header */}
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <p className="text-small" style={{ color: 'var(--text-muted)' }}>{t.phase_1}</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <p className="text-medium" style={{ color: 'var(--text-muted)' }}>{t.phase_1}</p>
                 <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                     <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{currentIndex + 1}</span>
                     <span style={{ color: 'var(--text-muted)' }}>/ 11</span>
                 </div>
-            </header>
+            </div>
 
             <div key={currentIndex} className="animate-slide-up-fade">
                 {/* Progress bar */}
@@ -761,11 +1000,13 @@ export default function AuditForm({ user }) {
                 </div>
 
                 {/* Main Focus Question (What should the user immediately look for?) */}
-                <h1 className="title-large" style={{ marginBottom: '4px', lineHeight: '1.2' }}>{currentCategory.title}</h1>
-                <p style={{ color: 'var(--accent-primary)', fontWeight: '500', fontSize: '14px', marginBottom: '20px' }}>{currentCategory.subtitle}</p>
+                <header className="page-header" style={{ marginTop: '16px' }}>
+                    <h1 className="title-large">{currentCategory.title}</h1>
+                    <p className="text-medium" style={{ color: 'var(--accent-primary)', fontWeight: '500' }}>{currentCategory.subtitle}</p>
+                </header>
 
                 {/* Cheatsheet Card - Beautifully embedded for instant review */}
-                <div className="glass-panel" style={{
+                <div className="content-card" style={{
                     marginBottom: '32px',
                     borderLeft: `4px solid var(--accent-primary)`,
                     padding: '20px',

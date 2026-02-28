@@ -1,34 +1,36 @@
-@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
 :root {
-  /* Professional & Sophisticated, Warm Light Mode */
-  --bg-primary: #FDFDFB;
-  /* Warm off-white background */
-  --bg-secondary: #FFFFFF;
-  /* Stark white for cards */
-  --glass-bg: rgba(255, 255, 255, 0.95);
-  --glass-border: rgba(45, 55, 72, 0.05);
+  /* Slate & White Theme (Tailwind-like) */
+  --bg-primary: #f8fafc;
+  /* slate-50 */
+  --bg-secondary: #ffffff;
+  /* white */
+  --glass-bg: #ffffff;
+  --glass-border: #f1f5f9;
+  /* slate-100 */
 
-  --shadow-warm: 0 4px 20px -4px rgba(0, 0, 0, 0.05), 0 2px 8px -2px rgba(0, 0, 0, 0.02);
-  /* Soft, elevated shadow */
+  --shadow-warm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  /* shadow-sm */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 
-  --text-primary: #1A202C;
-  /* Near black for maximum readability */
-  --text-secondary: #4A5568;
-  --text-muted: #A0AEC0;
+  --text-primary: #0f172a;
+  /* slate-900 */
+  --text-secondary: #475569;
+  /* slate-600 */
+  --text-muted: #94a3b8;
+  /* slate-400 */
 
   --accent-primary: #0F58BD;
-  /* Professional Deep Blue/Teal */
   --accent-hover: #0D4A9E;
   --accent-light: #EBF4FF;
-  /* Soft blue background for active states */
 
   --success: #38A169;
   --warning: #D69E2E;
   --danger: #E53E3E;
 
-  --border-radius: 12px;
-  /* Slightly sharper, modern corners */
+  --border-radius: 16px;
+  /* 2xl */
   --transition: all 0.2s ease-in-out;
 }
 
@@ -57,15 +59,23 @@ body {
   background-image: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.05) 0%, transparent 60%);
 }
 
-/* Glassmorphism Utilities */
-.glass-panel {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+/* Content Card Utility */
+.content-card {
+  background-color: var(--bg-secondary);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+  margin-bottom: 16px;
   border: 1px solid var(--glass-border);
-  border-radius: var(--border-radius);
-  padding: 24px;
-  box-shadow: var(--shadow-warm);
+}
+
+/* Legacy Glassmorphism (Deprecated but kept for safety) */
+.glass-panel {
+  background-color: var(--bg-secondary);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+  border: 1px solid var(--glass-border);
 }
 
 .title-large {
@@ -245,4 +255,41 @@ button {
   overflow-y: auto;
   border: 1px solid var(--glass-border);
   position: relative;
+}
+
+/* Page Layout Standardization (Perfectly Unified) */
+.layout-standard,
+.layout-wide {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  background-color: var(--bg-primary);
+  min-height: 100vh;
+  padding: 24px 16px 96px 16px;
+  /* pt-6, px-4, pb-24 */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Page Header Standardization */
+.page-header {
+  margin-top: 0;
+  margin-bottom: 24px;
+  width: 100%;
+  padding: 0 4px;
+}
+
+.page-header .title-large {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-header .text-medium {
+  font-size: 14px;
+  color: var(--text-secondary);
 }

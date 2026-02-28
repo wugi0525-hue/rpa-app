@@ -8,7 +8,7 @@ service cloud.firestore {
     }
     
     // Magazine Posts: Anyone can read, only Admin can write
-    match /magazine_posts/{post} {
+    match /magazines/{post} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.token.email == "wugi0525@gmail.com";
     }

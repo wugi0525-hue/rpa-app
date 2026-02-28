@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronRight } from 'lucide-react';
+import { Search, ChevronRight, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { useLanguage } from '../LanguageContext';
 import { translations } from '../i18n/translations';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -9,8 +10,26 @@ import LoadingSpinner from '../components/LoadingSpinner';
 export default function Dashboard({ user }) {
     const [audits, setAudits] = useState([]);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
     const { language, changeLanguage } = useLanguage();
     const t = translations[language] || translations.en;
+
+    const handleDelete = async (e, auditId, companyName) => {
+        e.stopPropagation();
+        const confirmMessage = language === 'ko'
+            ? `정말로 [${companyName}]의 평가 결과를 삭제하시겠습니까?`
+            : `Are you sure you want to delete the audit report for [${companyName}]?`;
+
+        if (window.confirm(confirmMessage)) {
+            try {
+                await deleteDoc(doc(db, "audits", auditId));
+                setAudits(audits.filter(a => a.id !== auditId));
+            } catch (error) {
+                console.error("Error deleting document: ", error);
+                alert(language === 'ko' ? "삭제에 실패했습니다." : "Failed to delete.");
+            }
+        }
+    };
 
     useEffect(() => {
         const fetchAudits = async () => {
@@ -39,17 +58,17 @@ export default function Dashboard({ user }) {
     }, [user]);
 
     return (
-        <div className="dashboard-page">
+        <div className="stealth-layout layout-standard">
             {/* Stealthy Header - Looks like a simple news/notes app */}
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+            <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h1 className="title-large" style={{ color: 'var(--text-primary)' }}>{t.dash_title}</h1>
+                    <h1 className="title-large">{t.dash_title}</h1>
                     <p className="text-medium">{t.dash_subtitle}</p>
                 </div>
             </header>
 
             {/* Fake Search Bar to disguise intent */}
-            <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', marginBottom: '24px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--glass-border)', boxShadow: 'var(--shadow-warm)' }}>
+            <div className="content-card" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', marginBottom: '24px' }}>
                 <Search size={20} color="var(--text-muted)" />
                 <input
                     type="text"
@@ -65,7 +84,7 @@ export default function Dashboard({ user }) {
                     <button style={{ color: 'var(--accent-primary)', fontSize: '14px', fontWeight: '500', background: 'none', border: 'none', cursor: 'pointer' }}>{t.dash_view_all}</button>
                 </div>
 
-                <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px' }}>
+                <div className="content-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px' }}>
                     {loading ? (
                         <LoadingSpinner fullScreen={false} message={t.dash_loading} />
                     ) : audits.length === 0 ? (
@@ -89,7 +108,11 @@ export default function Dashboard({ user }) {
                             }
 
                             return (
-                                <div key={audit.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid var(--glass-border)' }}>
+                                <div
+                                    key={audit.id}
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid var(--glass-border)', cursor: 'pointer' }}
+                                    onClick={() => navigate('/audit', { state: { viewAudit: audit } })}
+                                >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                         <div style={{ width: 40, height: 40, borderRadius: '8px', background: 'rgba(37, 99, 235, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                             <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>{audit.companyName?.charAt(0) || '?'}</span>
@@ -98,7 +121,7 @@ export default function Dashboard({ user }) {
                                             <h3 style={{ fontSize: '16px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 {audit.companyName}
                                                 {audit.homepage && (
-                                                    <a href={audit.homepage.startsWith('http') ? audit.homepage : `https://${audit.homepage}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)' }}>
+                                                    <a href={audit.homepage.startsWith('http') ? audit.homepage : `https://${audit.homepage}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)' }} onClick={(e) => e.stopPropagation()}>
                                                         <Search size={14} />
                                                     </a>
                                                 )}
@@ -108,7 +131,18 @@ export default function Dashboard({ user }) {
                                             </p>
                                         </div>
                                     </div>
-                                    <ChevronRight size={20} color="var(--text-muted)" />
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <button
+                                            onClick={(e) => handleDelete(e, audit.id, audit.companyName)}
+                                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', opacity: 0.8 }}
+                                            onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                                            onMouseLeave={(e) => e.currentTarget.style.opacity = 0.8}
+                                            title={language === 'ko' ? '삭제' : 'Delete'}
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                        <ChevronRight size={20} color="var(--text-muted)" />
+                                    </div>
                                 </div>
                             )
                         })
